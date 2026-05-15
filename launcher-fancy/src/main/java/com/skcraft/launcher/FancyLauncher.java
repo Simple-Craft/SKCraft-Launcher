@@ -30,9 +30,8 @@ public class FancyLauncher {
                     JFrame.setDefaultLookAndFeelDecorated(true);
                     JDialog.setDefaultLookAndFeelDecorated(true);
                     System.setProperty("sun.awt.noerasebackground", "true");
-                    System.setProperty("substancelaf.windowRoundedCorners", "false");
 
-                    if (!SwingHelper.setLookAndFeel("com.skcraft.launcher.skin.LauncherLookAndFeel")) {
+                    if (!SwingHelper.setLookAndFeel("com.formdev.flatlaf.FlatDarculaLaf")) {
                         UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
                     }
 
