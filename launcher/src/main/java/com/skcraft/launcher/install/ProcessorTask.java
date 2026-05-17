@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.java.Log;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -55,6 +56,12 @@ public class ProcessorTask implements InstallTask {
 		message = "Resolving parameters";
 		List<String> programArgs = processor.resolveArgs(resolver);
 		Map<String, String> outputs = processor.resolveOutputs(resolver);
+
+		if (!outputs.isEmpty() && areOutputsValid(outputs)) {
+			log.info(String.format("Skipping processor '%s', outputs already valid", processor.getJar()));
+			progress = 1.0;
+			return;
+		}
 
 		message = "Finding libraries";
 		Library execFile = loaderManifest.findLibrary(processor.getJar());
@@ -138,6 +145,19 @@ public class ProcessorTask implements InstallTask {
 				progress = (double) i / total;
 			}
 		}
+	}
+
+	private static boolean areOutputsValid(Map<String, String> outputs) throws IOException {
+		for (Map.Entry<String, String> output : outputs.entrySet()) {
+			File artifact = new File(output.getKey());
+			if (!artifact.exists()) {
+				return false;
+			}
+			if (!FileUtils.getShaHash(artifact).equals(output.getValue())) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	@Override
