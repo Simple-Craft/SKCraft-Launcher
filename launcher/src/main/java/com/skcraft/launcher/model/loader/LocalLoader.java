@@ -9,4 +9,5 @@ import java.util.HashMap;
 public class LocalLoader {
 	private final LoaderManifest manifest;
 	private final HashMap<String, DownloadableFile.LocalFile> localFiles;
+	private boolean alreadyProcessed;
 }

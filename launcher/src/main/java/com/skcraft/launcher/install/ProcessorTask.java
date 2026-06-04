@@ -147,13 +147,27 @@ public class ProcessorTask implements InstallTask {
 		}
 	}
 
-	private static boolean areOutputsValid(Map<String, String> outputs) throws IOException {
+	private boolean areOutputsValid(Map<String, String> outputs) throws IOException {
 		for (Map.Entry<String, String> output : outputs.entrySet()) {
 			File artifact = new File(output.getKey());
+			String expected = output.getValue();
+
 			if (!artifact.exists()) {
+				log.info(String.format("Processor '%s' will run: output '%s' missing",
+						processor.getJar(), output.getKey()));
 				return false;
 			}
-			if (!FileUtils.getShaHash(artifact).equals(output.getValue())) {
+
+			if (expected == null || expected.isEmpty()) {
+				log.info(String.format("Processor '%s' will run: no expected hash for output '%s'",
+						processor.getJar(), output.getKey()));
+				return false;
+			}
+
+			String actual = FileUtils.getShaHash(artifact);
+			if (!actual.equalsIgnoreCase(expected)) {
+				log.info(String.format("Processor '%s' will run: output '%s' hash %s != expected %s",
+						processor.getJar(), output.getKey(), actual, expected));
 				return false;
 			}
 		}

@@ -20,6 +20,10 @@ public class ProcessorEntry extends ManifestEntry {
 	public void install(Installer installer, InstallLog log, UpdateCache cache, InstallExtras extras) throws Exception {
 		LocalLoader loader = extras.getLoader(loaderName);
 
+		if (loader.isAlreadyProcessed()) {
+			return;
+		}
+
 		if (processor.shouldRunOn(Side.CLIENT)) {
 			installer.queueLate(new ProcessorTask(processor, loader.getManifest(), getManifest(), loader.getLocalFiles()));
 		}

@@ -16,8 +16,10 @@ import com.skcraft.launcher.LauncherException;
 import com.skcraft.launcher.dialog.FeatureSelectionDialog;
 import com.skcraft.launcher.dialog.ProgressDialog;
 import com.skcraft.launcher.install.*;
+import com.skcraft.launcher.model.loader.InstallProcessor;
 import com.skcraft.launcher.model.loader.LoaderManifest;
 import com.skcraft.launcher.model.loader.LocalLoader;
+import com.skcraft.launcher.model.loader.ProcessorEntry;
 import com.skcraft.launcher.model.minecraft.*;
 import com.skcraft.launcher.model.modpack.DownloadableFile;
 import com.skcraft.launcher.model.modpack.Feature;
@@ -151,6 +153,39 @@ public abstract class BaseUpdater {
             loaders.put(entry.getKey(), new LocalLoader(entry.getValue(), localFilesMap));
         }
 
+        // Decide which loaders can skip their processor batch entirely, based on a
+        // fingerprint marker recorded after the previous successful install.
+        final Map<String, String> pendingMarkerWrites = Maps.newHashMap();
+        Map<String, List<InstallProcessor>> processorsByLoader = Maps.newHashMap();
+        for (ManifestEntry entry : manifest.getTasks()) {
+            if (entry instanceof ProcessorEntry) {
+                ProcessorEntry pe = (ProcessorEntry) entry;
+                List<InstallProcessor> list = processorsByLoader.get(pe.getLoaderName());
+                if (list == null) {
+                    list = new ArrayList<InstallProcessor>();
+                    processorsByLoader.put(pe.getLoaderName(), list);
+                }
+                list.add(pe.getProcessor());
+            }
+        }
+        for (Map.Entry<String, List<InstallProcessor>> entry : processorsByLoader.entrySet()) {
+            String loaderName = entry.getKey();
+            LocalLoader localLoader = loaders.get(loaderName);
+            if (localLoader == null) continue;
+
+            String fingerprint = LoaderProcessingMarker.computeFingerprint(
+                    localLoader.getManifest(), entry.getValue());
+            File markerFile = LoaderProcessingMarker.markerFile(launcher, loaderName);
+
+            if (LoaderProcessingMarker.matches(markerFile, fingerprint)
+                    && LoaderProcessingMarker.allGeneratedLibrariesPresent(launcher, localLoader.getManifest())) {
+                log.info("Skipping processor batch for loader '" + loaderName + "' (marker up-to-date)");
+                localLoader.setAlreadyProcessed(true);
+            } else {
+                pendingMarkerWrites.put(loaderName, fingerprint);
+            }
+        }
+
         InstallExtras extras = new InstallExtras(contentDir, loaders);
         for (ManifestEntry entry : manifest.getTasks()) {
             entry.install(installer, currentLog, updateCache, extras);
@@ -170,6 +205,12 @@ public abstract class BaseUpdater {
                 writeDataFile(logPath, currentLog);
                 writeDataFile(cachePath, updateCache);
                 writeDataFile(featuresPath, featuresCache);
+
+                for (Map.Entry<String, String> entry : pendingMarkerWrites.entrySet()) {
+                    LoaderProcessingMarker.write(
+                            LoaderProcessingMarker.markerFile(launcher, entry.getKey()),
+                            entry.getValue());
+                }
             }
         });
 
