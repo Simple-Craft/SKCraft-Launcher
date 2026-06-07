@@ -60,7 +60,8 @@ public class AccountSelectDialog extends JDialog {
 		accountPane.setAlignmentX(CENTER_ALIGNMENT);
 
 		loginButton.setFont(loginButton.getFont().deriveFont(Font.BOLD));
-		loginButton.setMargin(new Insets(0, 10, 0, 10));
+		Insets defaultMargin = loginButton.getMargin();
+		loginButton.setMargin(new Insets(defaultMargin.top, 10, defaultMargin.bottom, 10));
 
 		//Start Buttons
 		buttonsPanel.setBorder(BorderFactory.createEmptyBorder(26, 13, 13, 13));
